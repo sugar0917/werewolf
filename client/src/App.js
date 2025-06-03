@@ -715,7 +715,7 @@ function App() {
       socket.off("werewolf_chat_message");
       socket.off();
     };
-  }, [playersById]);
+  }, []);
 
   useEffect(() => {
     if (gamePhase === "night") setWerewolfChat([]);
@@ -1642,47 +1642,55 @@ function App() {
   useEffect(() => {
     const handler = ({ eliminated, voteList, reason }) => {
       setVoteHistory(prev => {
-        // 如果是平票（reason包含"平票"），合併到同一天
-        if (reason && reason.includes("平票")) {
-          // 如果歷史為空，直接新增第一天
-          if (prev.length === 0) {
-            return [{
-              round: 1,
-              eliminated,
+        // 沒有歷史，建立第一天第一輪
+        if (prev.length === 0) {
+          return [{
+            round: 1,
+            votes: [{
               voteList: voteList.map(v => ({
                 from: playersById[v.from] || v.from,
                 to: v.to ? (playersById[v.to] || v.to) : "棄票"
               })),
+              eliminated,
               reason: reason || null
-            }];
-          } else {
-            // 合併到最後一天
-            const last = prev[prev.length - 1];
-            return [
-              ...prev.slice(0, -1),
-              {
-                ...last,
+            }]
+          }];
+        }
+        // 判斷是否平票（reason包含"平票"）
+        if (reason && reason.includes("平票")) {
+          // 合併到當天的下一輪
+          const lastDay = prev[prev.length - 1];
+          return [
+            ...prev.slice(0, -1),
+            {
+              ...lastDay,
+              votes: [
+                ...lastDay.votes,
+                {
+                  voteList: voteList.map(v => ({
+                    from: playersById[v.from] || v.from,
+                    to: v.to ? (playersById[v.to] || v.to) : "棄票"
+                  })),
+                  eliminated,
+                  reason: reason || null
+                }
+              ]
+            }
+          ];
+        } else {
+          // 新的一天
+          return [
+            ...prev,
+            {
+              round: prev.length + 1,
+              votes: [{
                 voteList: voteList.map(v => ({
                   from: playersById[v.from] || v.from,
                   to: v.to ? (playersById[v.to] || v.to) : "棄票"
                 })),
                 eliminated,
                 reason: reason || null
-              }
-            ];
-          }
-        } else {
-          // 非平票才遞增天數
-          return [
-            ...prev,
-            {
-              round: prev.length + 1,
-              eliminated,
-              voteList: voteList.map(v => ({
-                from: playersById[v.from] || v.from,
-                to: v.to ? (playersById[v.to] || v.to) : "棄票"
-              })),
-              reason: reason || null
+              }]
             }
           ];
         }
@@ -1939,16 +1947,21 @@ function VoteHistoryPanel({ open, onClose, voteHistory }) {
         {voteHistory.length === 0 ? (
           <div style={{ color: '#888', textAlign: 'center' }}>目前尚無投票紀錄</div>
         ) : (
-          voteHistory.map((vh, idx) => (
-            <div key={idx} style={{ marginBottom: 18, borderBottom: '1px solid #eee', paddingBottom: 10 }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>第 {vh.round} 天</div>
-              <ul style={{ margin: 0, paddingLeft: 18 }}>
-                {vh.voteList.map((v, i) => (
-                  <li key={i}>{v.from} → {v.to}</li>
-                ))}
-              </ul>
-              {vh.eliminated && <div style={{ color: '#e74c3c', marginTop: 4 }}><i className="fas fa-skull" /> 被放逐：{vh.eliminated}</div>}
-              {vh.reason && <div style={{ color: '#888', fontSize: 13, marginTop: 2 }}>{vh.reason}</div>}
+          voteHistory.map((day, dayIdx) => (
+            <div key={dayIdx} style={{ marginBottom: 18, borderBottom: '1px solid #eee', paddingBottom: 10 }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>第 {day.round} 天</div>
+              {day.votes.map((vote, voteIdx) => (
+                <div key={voteIdx} style={{ marginBottom: 8, paddingLeft: 10 }}>
+                  <div style={{ fontWeight: 500, color: '#555' }}>第 {voteIdx + 1} 次投票</div>
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {vote.voteList.map((v, i) => (
+                      <li key={i}>{v.from} → {v.to}</li>
+                    ))}
+                  </ul>
+                  {vote.eliminated && <div style={{ color: '#e74c3c', marginTop: 4 }}><i className="fas fa-skull" /> 被放逐：{vote.eliminated}</div>}
+                  {vote.reason && <div style={{ color: '#888', fontSize: 13, marginTop: 2 }}>{vote.reason}</div>}
+                </div>
+              ))}
             </div>
           ))
         )}
