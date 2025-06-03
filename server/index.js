@@ -500,9 +500,9 @@ io.on("connection", (socket) => {
     // 隨機打亂房間內玩家順序
     rooms[roomId] = rooms[roomId].sort(() => Math.random() - 0.5);
 
-    // 重置遊戲狀態
-    gameStarted[roomId] = true;
-    gamePhases[roomId] = "night";
+    // 讓遊戲狀態回到未開始，讓房主可以再次按下start_game
+    gameStarted[roomId] = false;
+    gamePhases[roomId] = "waiting";
     nightActions[roomId] = {};
     prophetActions[roomId] = {};
     witchStates[roomId] = { canUseSave: true, canUsePoison: true };
@@ -519,40 +519,10 @@ io.on("connection", (socket) => {
       }
     });
 
-    // 重新分配角色
-    const players = [...rooms[roomId]];
-    const roles = getRolesByPlayerCount(players.length);
-    const shuffledRoles = roles.sort(() => Math.random() - 0.5);
-    players.forEach((player, i) => {
-      playerRoles[player.id] = {
-        roomId,
-        username: player.username,
-        role: shuffledRoles[i],
-        alive: true
-      };
-    });
-
-    // 通知所有玩家
-    players.forEach(player => {
-      io.to(player.id).emit("your_role", playerRoles[player.id].role);
-    });
-    io.to(roomId).emit("phase_changed", "night");
-    broadcastPlayerStates(roomId);
-
-    // 通知狼人隊友
-    const wolves = players.filter(p => playerRoles[p.id].role === "狼人");
-    wolves.forEach(wolf => {
-      const teammates = wolves.filter(w => w.id !== wolf.id).map(w => ({ id: w.id, username: w.username }));
-      const targets = players.filter(p => playerRoles[p.id].alive).map(p => ({ id: p.id, username: p.username }));
-      io.to(wolf.id).emit("night_werewolf_info", { teammates, targets });
-    });
-
-    hunterTarget[roomId] = null;
-    hunterTriggered = {};
-    deathByWitch = {};
-
-    // 最後才廣播game_restarted，確保所有狀態都已經重置
+    // 廣播狀態，讓前端進入等待房主開始新遊戲畫面
     io.to(roomId).emit("game_restarted");
+    io.to(roomId).emit("phase_changed", "waiting");
+    broadcastPlayerStates(roomId);
   });
 
   socket.on("hunter_shoot", ({ roomId, targetId }) => {
