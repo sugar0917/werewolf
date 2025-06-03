@@ -354,7 +354,7 @@ const styleSheet = document.createElement("style");
 styleSheet.textContent = globalStyles;
 document.head.appendChild(styleSheet);
 
-const socket = io(process.env.REACT_APP_SOCKET_URL || "https://werewolf-server-7xbp.onrender.com");
+const socket = io("https://werewolf-server-lnan.onrender.com");
 
 function App() {
   const [roomId, setRoomId] = useState("");
