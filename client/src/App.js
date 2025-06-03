@@ -383,6 +383,30 @@ document.head.appendChild(styleSheet);
 
 const socket = io("https://werewolf-server-lnan.onrender.com");
 
+// 新增：角色圖示與說明對應
+const ROLE_INFO = {
+  "狼人": {
+    icon: <i className="fas fa-wolf-pack-battalion" style={{ color: '#e74c3c' }} />,
+    desc: "夜晚可以與隊友討論並選擇一名玩家擊殺"
+  },
+  "預言家": {
+    icon: <i className="fas fa-eye" style={{ color: '#3498db' }} />,
+    desc: "夜晚可以查驗一名玩家的身份"
+  },
+  "女巫": {
+    icon: <i className="fas fa-flask" style={{ color: '#9b59b6' }} />,
+    desc: "夜晚可以使用解藥救人，或使用毒藥毒死一名玩家"
+  },
+  "獵人": {
+    icon: <i className="fas fa-crosshairs" style={{ color: '#e67e22' }} />,
+    desc: "死亡時可以帶走一名玩家"
+  },
+  "村民": {
+    icon: <i className="fas fa-user" style={{ color: '#2ecc71' }} />,
+    desc: "白天可以參與討論和投票"
+  }
+};
+
 function App() {
   const [roomId, setRoomId] = useState("");
   const roomIdRef = useRef("");
@@ -461,7 +485,14 @@ function App() {
     ]
   };
 
+  // 新增：投票歷史狀態
+  const [voteHistory, setVoteHistory] = useState([]);
+
+  // 新增：語音面板折疊狀態
+  const [voicePanelOpen, setVoicePanelOpen] = useState(false);
+
   const restartGame = () => {
+    setVoteHistory([]);
     setGameEnded(false);
     setWinner(null);
     setGameStarted(false);
@@ -1106,147 +1137,192 @@ function App() {
       bottom: 20, 
       right: 20, 
       zIndex: 1000,
-      backgroundColor: "rgba(255, 255, 255, 0.9)",
-      padding: "15px",
+      backgroundColor: voicePanelOpen ? "rgba(255, 255, 255, 0.9)" : "rgba(255,255,255,0.7)",
+      padding: voicePanelOpen ? "15px" : "6px 10px",
       borderRadius: "10px",
-      boxShadow: "0 0 10px rgba(0,0,0,0.2)"
+      boxShadow: "0 0 10px rgba(0,0,0,0.2)",
+      minWidth: voicePanelOpen ? 320 : 0,
+      minHeight: voicePanelOpen ? 0 : 0,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "flex-end"
     }}>
-      <div style={{ marginBottom: "10px" }}>
+      {!voicePanelOpen && (
         <button 
-          onClick={toggleMicrophone} 
-          style={{ 
-            margin: 5,
-            padding: "8px 15px",
-            backgroundColor: isMuted ? "#ff4444" : "#4CAF50",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer"
+          onClick={() => setVoicePanelOpen(true)}
+          style={{
+            background: '#4a90e2',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            width: 44,
+            height: 44,
+            fontSize: 22,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
           }}
+          title="展開語音控制"
         >
-          {isMuted ? "🔇 開啟麥克風" : "🎤 關閉麥克風"}
+          <i className="fas fa-microphone" />
         </button>
-        <button 
-          onClick={toggleDeafen} 
-          style={{ 
-            margin: 5,
-            padding: "8px 15px",
-            backgroundColor: isDeafened ? "#ff4444" : "#4CAF50",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer"
-          }}
-        >
-          {isDeafened ? "🔈 開啟聲音" : "🔊 關閉聲音"}
-        </button>
-      </div>
-
-      {gamePhase === "day" && currentSpeaker && (
-        <div style={{ 
-          marginBottom: "10px",
-          padding: "5px",
-          backgroundColor: "#ffeeee",
-          borderRadius: "5px",
-          textAlign: "center",
-          color: currentSpeaker === mySocketId ? "red" : "black",
-          fontWeight: "bold"
-        }}>
-          {currentSpeaker === mySocketId ? 
-            `你的發言時間：${speakingTime}秒` : 
-            `${playersById[currentSpeaker] || currentSpeaker} 正在發言：${speakingTime}秒`}
-          
-          {currentSpeaker === mySocketId && (
-            <button onClick={() => socket.emit("stop_speaking", { roomId })} style={{ marginLeft: 10 }}>提前結束</button>
-          )}
-        </div>
       )}
-      
-      {/* 顯示發言順序 */}
-      {gamePhase === "day" && speakingOrder && speakingOrder.length > 0 && (
-         <div style={{ fontSize: "14px", marginTop: 10, textAlign: "center" }}>
-            <p>發言順序:</p>
-            <div>
-                {speakingOrder.map((playerId, index) => (
-                    <span key={playerId} style={{ fontWeight: playerId === currentSpeaker ? "bold" : "normal", color: playerStates[playerId] === false ? "gray" : "unset" }}>
-                        {playersById[playerId] || playerId}{index < speakingOrder.length - 1 ? " → " : ""}
-                    </span>
-                ))}
+      {voicePanelOpen && (
+        <div style={{ width: 320 }}>
+          <button 
+            onClick={() => setVoicePanelOpen(false)}
+            style={{
+              position: 'absolute',
+              top: 8,
+              right: 12,
+              background: 'none',
+              border: 'none',
+              fontSize: 20,
+              color: '#888',
+              cursor: 'pointer',
+              zIndex: 1100
+            }}
+            title="收合語音控制"
+          >
+            <i className="fas fa-chevron-down" />
+          </button>
+          {/* 原本語音控制內容 */}
+          <div style={{ marginTop: 10 }}>
+            <div style={{ marginBottom: "10px" }}>
+              <button 
+                onClick={toggleMicrophone} 
+                style={{ 
+                  margin: 5,
+                  padding: "8px 15px",
+                  backgroundColor: isMuted ? "#ff4444" : "#4CAF50",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "5px",
+                  cursor: "pointer"
+                }}
+              >
+                {isMuted ? "🔇 開啟麥克風" : "🎤 關閉麥克風"}
+              </button>
+              <button 
+                onClick={toggleDeafen} 
+                style={{ 
+                  margin: 5,
+                  padding: "8px 15px",
+                  backgroundColor: isDeafened ? "#ff4444" : "#4CAF50",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "5px",
+                  cursor: "pointer"
+                }}
+              >
+                {isDeafened ? "🔈 開啟聲音" : "🔊 關閉聲音"}
+              </button>
             </div>
-         </div>
-      )}
-      
-      {/* WebRTC 測試面板 */}
-      <div style={{ 
-        marginTop: "15px",
-        padding: "15px",
-        border: "2px solid #2196F3",
-        borderRadius: "8px",
-        backgroundColor: "#f5f5f5"
-      }}>
-        <h4 style={{ 
-          margin: "0 0 10px 0",
-          color: "#2196F3",
-          borderBottom: "2px solid #2196F3",
-          paddingBottom: "5px"
-        }}>
-          WebRTC 測試面板
-        </h4>
-        
-        <div style={{ marginTop: "10px" }}>
-          <div style={{ 
-            padding: "8px",
-            backgroundColor: localStream ? "#e8f5e9" : "#ffebee",
-            borderRadius: "5px",
-            marginBottom: "5px"
-          }}>
-            <strong>本地流狀態：</strong>
-            {localStream ? "✅ 已獲取" : "❌ 未獲取"}
-          </div>
 
-          <div style={{ 
-            padding: "8px",
-            backgroundColor: "#e3f2fd",
-            borderRadius: "5px",
-            marginBottom: "5px"
-          }}>
-            <strong>連接狀態：</strong>
-            {Object.entries(peerConnections).map(([peerId, pc]) => (
-              <div key={peerId} style={{ marginTop: "5px" }}>
-                {playersById[peerId] || peerId}: 
-                <span style={{ 
-                  color: pc.connectionState === "connected" ? "#4CAF50" : 
-                         pc.connectionState === "connecting" ? "#FFA000" : "#f44336"
-                }}>
-                  {pc.connectionState}
-                </span>
+            {gamePhase === "day" && currentSpeaker && (
+              <div style={{ 
+                marginBottom: "10px",
+                padding: "5px",
+                backgroundColor: "#ffeeee",
+                borderRadius: "5px",
+                textAlign: "center",
+                color: currentSpeaker === mySocketId ? "red" : "black",
+                fontWeight: "bold"
+              }}>
+                {currentSpeaker === mySocketId ? 
+                  `你的發言時間：${speakingTime}秒` : 
+                  `${playersById[currentSpeaker] || currentSpeaker} 正在發言：${speakingTime}秒`}
+                {currentSpeaker === mySocketId && (
+                  <button onClick={() => socket.emit("stop_speaking", { roomId })} style={{ marginLeft: 10 }}>提前結束</button>
+                )}
               </div>
-            ))}
-          </div>
-
-          <div style={{ 
-            padding: "8px",
-            backgroundColor: "#e3f2fd",
-            borderRadius: "5px"
-          }}>
-            <strong>遠程流：</strong>
-            {Object.keys(remoteStreams).length > 0 ? (
-              Object.entries(remoteStreams).map(([peerId, stream]) => (
-                <div key={peerId} style={{ marginTop: "5px" }}>
-                  {playersById[peerId] || peerId}: 
-                  <span style={{ 
-                    color: stream.active ? "#4CAF50" : "#f44336"
-                  }}>
-                    {stream.active ? "✅ 活躍" : "❌ 未活躍"}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <div style={{ color: "#666" }}>無遠程流</div>
             )}
+            {/* 顯示發言順序 */}
+            {gamePhase === "day" && speakingOrder && speakingOrder.length > 0 && (
+              <div style={{ fontSize: "14px", marginTop: 10, textAlign: "center" }}>
+                <p>發言順序:</p>
+                <div>
+                  {speakingOrder.map((playerId, index) => (
+                    <span key={playerId} style={{ fontWeight: playerId === currentSpeaker ? "bold" : "normal", color: playerStates[playerId] === false ? "gray" : "unset" }}>
+                      {playersById[playerId] || playerId}{index < speakingOrder.length - 1 ? " → " : ""}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* WebRTC 測試面板 */}
+            <div style={{ 
+              marginTop: "15px",
+              padding: "15px",
+              border: "2px solid #2196F3",
+              borderRadius: "8px",
+              backgroundColor: "#f5f5f5"
+            }}>
+              <h4 style={{ 
+                margin: "0 0 10px 0",
+                color: "#2196F3",
+                borderBottom: "2px solid #2196F3",
+                paddingBottom: "5px"
+              }}>
+                WebRTC 測試面板
+              </h4>
+              <div style={{ marginTop: "10px" }}>
+                <div style={{ 
+                  padding: "8px",
+                  backgroundColor: localStream ? "#e8f5e9" : "#ffebee",
+                  borderRadius: "5px",
+                  marginBottom: "5px"
+                }}>
+                  <strong>本地流狀態：</strong>
+                  {localStream ? "✅ 已獲取" : "❌ 未獲取"}
+                </div>
+                <div style={{ 
+                  padding: "8px",
+                  backgroundColor: "#e3f2fd",
+                  borderRadius: "5px",
+                  marginBottom: "5px"
+                }}>
+                  <strong>連接狀態：</strong>
+                  {Object.entries(peerConnections).map(([peerId, pc]) => (
+                    <div key={peerId} style={{ marginTop: "5px" }}>
+                      {playersById[peerId] || peerId}: 
+                      <span style={{ 
+                        color: pc.connectionState === "connected" ? "#4CAF50" : 
+                               pc.connectionState === "connecting" ? "#FFA000" : "#f44336"
+                      }}>
+                        {pc.connectionState}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ 
+                  padding: "8px",
+                  backgroundColor: "#e3f2fd",
+                  borderRadius: "5px"
+                }}>
+                  <strong>遠程流：</strong>
+                  {Object.keys(remoteStreams).length > 0 ? (
+                    Object.entries(remoteStreams).map(([peerId, stream]) => (
+                      <div key={peerId} style={{ marginTop: "5px" }}>
+                        {playersById[peerId] || peerId}: 
+                        <span style={{ 
+                          color: stream.active ? "#4CAF50" : "#f44336"
+                        }}>
+                          {stream.active ? "✅ 活躍" : "❌ 未活躍"}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ color: "#666" }}>無遠程流</div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 
@@ -1563,6 +1639,37 @@ function App() {
     }
   };
 
+  // 在vote_result事件時累加紀錄
+  useEffect(() => {
+    const handler = ({ eliminated, voteList, reason }) => {
+      setVoteHistory(prev => [
+        ...prev,
+        {
+          round: prev.length + 1,
+          eliminated,
+          voteList: voteList.map(v => ({
+            from: playersById[v.from] || v.from,
+            to: v.to ? (playersById[v.to] || v.to) : "棄票"
+          })),
+          reason: reason || null
+        }
+      ]);
+    };
+    socket.on("vote_result", handler);
+    return () => socket.off("vote_result", handler);
+  }, [playersById]);
+
+  // 遊戲結束時清空紀錄
+  useEffect(() => {
+    if (gameEnded) {
+      // 等待重新開始才清空
+      // setVoteHistory([]);
+    }
+  }, [gameEnded]);
+
+  // 在App主組件內加一個按鈕可開啟夾層
+  const [votePanelOpen, setVotePanelOpen] = useState(false);
+
   return (
     <div className={`game-container ${gamePhase === "night" ? "night" : "day"}`}>
       <h2><i className="fas fa-gamepad" /> 狼人殺遊戲</h2>
@@ -1585,9 +1692,13 @@ function App() {
               <><i className="fas fa-users" /> 好人陣營獲勝！</>
             )}
           </p>
-          <button className="action-button" onClick={restartGame}>
-            <i className="fas fa-redo" /> 重新開始
-          </button>
+          {isHost ? (
+            <button className="action-button" onClick={restartGame}>
+              <i className="fas fa-redo" /> 開始新遊戲
+            </button>
+          ) : (
+            <div style={{ color: '#888', marginTop: 18 }}>請等待房主開始新遊戲…</div>
+          )}
         </div>
       ) : (
         <>
@@ -1703,10 +1814,17 @@ function App() {
                   </div>
                 </div>
               )}
+
+              <button className="action-button" style={{ position: 'fixed', bottom: 20, left: 20, zIndex: 2100 }} onClick={() => setVotePanelOpen(true)}><i className="fas fa-history" /> 投票歷史</button>
             </>
           )}
         </>
       )}
+
+      <RenderGameInfo roomId={roomId} username={username} myRole={myRole} />
+
+      {/* 投票歷史夾層元件 */}
+      <VoteHistoryPanel open={votePanelOpen} onClose={() => setVotePanelOpen(false)} voteHistory={voteHistory} />
     </div>
   );
 }
@@ -1722,38 +1840,86 @@ function AudioPlayer({ stream, isDeafened }) {
 }
 
 // 新增：遊戲資訊顯示元件
-function RenderGameInfo({ roomId, username, myRole, getRoleIcon }) {
+function RenderGameInfo({ roomId, username, myRole }) {
+  const info = myRole ? ROLE_INFO[myRole] : null;
   return (
     <div style={{ 
       position: 'fixed', 
-      top: 10, 
-      left: 10, 
-      backgroundColor: 'rgba(0,0,0,0.5)', // 半透明
+      top: 20, 
+      right: 20, // 改到右上角避免擋住左側主要操作
+      backgroundColor: 'rgba(0,0,0,0.65)',
       color: 'white', 
-      padding: '8px 14px', 
-      borderRadius: '8px',
-      zIndex: 1000,
-      fontSize: '15px', // 字體縮小
-      pointerEvents: 'none', // 不會擋住點擊
-      maxWidth: '220px'
+      padding: '10px 18px', 
+      borderRadius: '10px',
+      zIndex: 2000,
+      fontSize: '15px',
+      pointerEvents: 'none',
+      maxWidth: '260px',
+      boxShadow: '0 2px 12px rgba(0,0,0,0.18)'
     }}>
-      <div><i className="fas fa-door-open" /> 房間ID: {roomId}</div>
-      <div><i className="fas fa-user" /> 暱稱: {username}</div>
-      {myRole && (
-        <div style={{ marginTop: '8px', padding: '8px', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '6px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-            {getRoleIcon(myRole)}
-            <span>你的角色：{myRole}</span>
-          </div>
-          <div style={{ fontSize: '12px', opacity: 0.8 }}>
-            {myRole === "狼人" && "夜晚可以與隊友討論並選擇一名玩家擊殺"}
-            {myRole === "預言家" && "夜晚可以查驗一名玩家的身份"}
-            {myRole === "女巫" && "夜晚可以使用解藥救人，或使用毒藥毒死一名玩家"}
-            {myRole === "獵人" && "死亡時可以帶走一名玩家"}
-            {myRole === "村民" && "白天可以參與討論和投票"}
+      <div style={{ fontWeight: 600, marginBottom: 4 }}><i className="fas fa-door-open" /> 房間ID: {roomId}</div>
+      <div style={{ fontWeight: 600, marginBottom: 8 }}><i className="fas fa-user" /> 暱稱: {username}</div>
+      {info && (
+        <div style={{ marginTop: '8px', padding: '10px', backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ fontSize: 32 }}>{info.icon}</div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>你的角色：{myRole}</div>
+            <div style={{ fontSize: '13px', opacity: 0.85, marginTop: 2 }}>{info.desc}</div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// 投票歷史夾層元件
+function VoteHistoryPanel({ open, onClose, voteHistory }) {
+  if (!open) return null;
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      background: 'rgba(0,0,0,0.45)',
+      zIndex: 3000,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      pointerEvents: 'auto'
+    }}>
+      <div style={{
+        background: '#fff',
+        color: '#222',
+        borderRadius: 12,
+        padding: 32,
+        minWidth: 340,
+        maxWidth: '90vw',
+        maxHeight: '80vh',
+        overflowY: 'auto',
+        boxShadow: '0 4px 32px rgba(0,0,0,0.18)',
+        position: 'relative'
+      }}>
+        <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 16, background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#888' }}><i className="fas fa-times" /></button>
+        <h3 style={{ marginBottom: 18 }}><i className="fas fa-history" /> 投票歷史紀錄</h3>
+        {voteHistory.length === 0 ? (
+          <div style={{ color: '#888', textAlign: 'center' }}>目前尚無投票紀錄</div>
+        ) : (
+          voteHistory.map((vh, idx) => (
+            <div key={idx} style={{ marginBottom: 18, borderBottom: '1px solid #eee', paddingBottom: 10 }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>第 {vh.round} 天</div>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {vh.voteList.map((v, i) => (
+                  <li key={i}>{v.from} → {v.to}</li>
+                ))}
+              </ul>
+              {vh.eliminated && <div style={{ color: '#e74c3c', marginTop: 4 }}><i className="fas fa-skull" /> 被放逐：{vh.eliminated}</div>}
+              {vh.reason && <div style={{ color: '#888', fontSize: 13, marginTop: 2 }}>{vh.reason}</div>}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }

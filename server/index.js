@@ -491,7 +491,15 @@ io.on("connection", (socket) => {
 
   socket.on("restart_game", (roomId) => {
     if (!rooms[roomId]) return;
-    
+    // 只允許房主觸發
+    const hostId = rooms[roomId][0]?.id;
+    if (socket.id !== hostId) {
+      socket.emit("error_message", "只有房主可以重新開始遊戲");
+      return;
+    }
+    // 隨機打亂房間內玩家順序
+    rooms[roomId] = rooms[roomId].sort(() => Math.random() - 0.5);
+
     // 重置遊戲狀態
     gameStarted[roomId] = true;
     gamePhases[roomId] = "night";
