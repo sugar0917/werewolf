@@ -1556,38 +1556,6 @@ function App() {
     </div>
   );
 
-  // 在遊戲界面中顯示當前房間ID
-  const renderGameInfo = () => (
-    <div style={{ 
-      position: 'fixed', 
-      top: 20, 
-      left: 20, 
-      backgroundColor: 'rgba(0,0,0,0.7)', 
-      color: 'white', 
-      padding: '10px 20px', 
-      borderRadius: '5px',
-      zIndex: 1000
-    }}>
-      <div><i className="fas fa-door-open" /> 房間ID: {roomId}</div>
-      <div><i className="fas fa-user" /> 暱稱: {username}</div>
-      {myRole && (
-        <div style={{ marginTop: '10px', padding: '10px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '5px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
-            {getRoleIcon(myRole)}
-            <span>你的角色：{myRole}</span>
-          </div>
-          <div style={{ fontSize: '12px', opacity: 0.8 }}>
-            {myRole === "狼人" && "夜晚可以與隊友討論並選擇一名玩家擊殺"}
-            {myRole === "預言家" && "夜晚可以查驗一名玩家的身份"}
-            {myRole === "女巫" && "夜晚可以使用解藥救人，或使用毒藥毒死一名玩家"}
-            {myRole === "獵人" && "死亡時可以帶走一名玩家"}
-            {myRole === "村民" && "白天可以參與討論和投票"}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
   const sendWerewolfChat = () => {
     if (werewolfChatInput.trim()) {
       socket.emit("werewolf_chat_message", { roomId, message: werewolfChatInput });
@@ -1606,7 +1574,6 @@ function App() {
       )}
 
       {renderPhaseIndicator()}
-      {joined && renderGameInfo()} {/* 添加遊戲信息顯示 */}
 
       {gameEnded ? (
         <div className="game-end">
@@ -1752,6 +1719,43 @@ function AudioPlayer({ stream, isDeafened }) {
     }
   }, [stream]);
   return <audio ref={audioRef} autoPlay controls={false} muted={isDeafened} style={{ display: 'none' }} />;
+}
+
+// 新增：遊戲資訊顯示元件
+function RenderGameInfo({ roomId, username, myRole, getRoleIcon }) {
+  return (
+    <div style={{ 
+      position: 'fixed', 
+      top: 10, 
+      left: 10, 
+      backgroundColor: 'rgba(0,0,0,0.5)', // 半透明
+      color: 'white', 
+      padding: '8px 14px', 
+      borderRadius: '8px',
+      zIndex: 1000,
+      fontSize: '15px', // 字體縮小
+      pointerEvents: 'none', // 不會擋住點擊
+      maxWidth: '220px'
+    }}>
+      <div><i className="fas fa-door-open" /> 房間ID: {roomId}</div>
+      <div><i className="fas fa-user" /> 暱稱: {username}</div>
+      {myRole && (
+        <div style={{ marginTop: '8px', padding: '8px', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+            {getRoleIcon(myRole)}
+            <span>你的角色：{myRole}</span>
+          </div>
+          <div style={{ fontSize: '12px', opacity: 0.8 }}>
+            {myRole === "狼人" && "夜晚可以與隊友討論並選擇一名玩家擊殺"}
+            {myRole === "預言家" && "夜晚可以查驗一名玩家的身份"}
+            {myRole === "女巫" && "夜晚可以使用解藥救人，或使用毒藥毒死一名玩家"}
+            {myRole === "獵人" && "死亡時可以帶走一名玩家"}
+            {myRole === "村民" && "白天可以參與討論和投票"}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default App;

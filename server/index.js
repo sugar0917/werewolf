@@ -827,37 +827,3 @@ function stopSpeaking(roomId) {
       console.log(`[Room ${roomId}] 無當前發言者需要停止`);
   }
 }
-
-const renderGameInfo = () => (
-  <div style={{ 
-    position: 'fixed', 
-    top: 10, 
-    left: 10, 
-    backgroundColor: 'rgba(0,0,0,0.5)', // 半透明
-    color: 'white', 
-    padding: '8px 14px', 
-    borderRadius: '8px',
-    zIndex: 1000,
-    fontSize: '15px', // 字體縮小
-    pointerEvents: 'none', // 不會擋住點擊
-    maxWidth: '220px'
-  }}>
-    <div><i className="fas fa-door-open" /> 房間ID: {roomId}</div>
-    <div><i className="fas fa-user" /> 暱稱: {username}</div>
-    {myRole && (
-      <div style={{ marginTop: '8px', padding: '8px', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '6px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-          {getRoleIcon(myRole)}
-          <span>你的角色：{myRole}</span>
-        </div>
-        <div style={{ fontSize: '12px', opacity: 0.8 }}>
-          {myRole === "狼人" && "夜晚可以與隊友討論並選擇一名玩家擊殺"}
-          {myRole === "預言家" && "夜晚可以查驗一名玩家的身份"}
-          {myRole === "女巫" && "夜晚可以使用解藥救人，或使用毒藥毒死一名玩家"}
-          {myRole === "獵人" && "死亡時可以帶走一名玩家"}
-          {myRole === "村民" && "白天可以參與討論和投票"}
-        </div>
-      </div>
-    )}
-  </div>
-);
