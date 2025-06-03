@@ -492,32 +492,6 @@ function App() {
   const [voicePanelOpen, setVoicePanelOpen] = useState(false);
 
   const restartGame = () => {
-    setVoteHistory([]);
-    setGameEnded(false);
-    setWinner(null);
-    setGameStarted(false);
-    setGamePhase("waiting");
-    setMyRole(null);
-    setIsWerewolf(false);
-    setIsProphet(false);
-    setIsWitch(false);
-    setWerewolfTeammates([]);
-    setWerewolfTargets([]);
-    setWerewolfVotes({});
-    setHasVoted(false);
-    setNightResult([]);
-    setHasChecked(false);
-    setCheckedResult(null);
-    setWitchAction(null);
-    setWitchSaveUsed(false);
-    setWitchPoisonUsed(false);
-    setVoteResults([]);
-    setVoteEliminated(null);
-    setSecondVoteCandidates(null);
-    setExcludedVoters([]);
-    setEligibleVoters([]);
-    setHasDayVoted(false);
-    setHunterTargets([]);
     socket.emit("restart_game", roomId);
   };
 
@@ -602,8 +576,33 @@ function App() {
       setWinner(winner);
     });
     socket.on("game_restarted", () => {
+      // 重置所有狀態
+      setVoteHistory([]);
+      setGameEnded(false);
+      setWinner(null);
       setGameStarted(true);
       setGamePhase("night");
+      setMyRole(null);
+      setIsWerewolf(false);
+      setIsProphet(false);
+      setIsWitch(false);
+      setWerewolfTeammates([]);
+      setWerewolfTargets([]);
+      setWerewolfVotes({});
+      setHasVoted(false);
+      setNightResult([]);
+      setHasChecked(false);
+      setCheckedResult(null);
+      setWitchAction(null);
+      setWitchSaveUsed(false);
+      setWitchPoisonUsed(false);
+      setVoteResults([]);
+      setVoteEliminated(null);
+      setSecondVoteCandidates(null);
+      setExcludedVoters([]);
+      setEligibleVoters([]);
+      setHasDayVoted(false);
+      setHunterTargets([]);
     });
     socket.on("error_message", (message) => {
       setErrorMessage(message);
@@ -1639,21 +1638,55 @@ function App() {
     }
   };
 
-  // 在vote_result事件時累加紀錄
+  // 在vote_result事件時累加紀錄（平票不遞增天數）
   useEffect(() => {
     const handler = ({ eliminated, voteList, reason }) => {
-      setVoteHistory(prev => [
-        ...prev,
-        {
-          round: prev.length + 1,
-          eliminated,
-          voteList: voteList.map(v => ({
-            from: playersById[v.from] || v.from,
-            to: v.to ? (playersById[v.to] || v.to) : "棄票"
-          })),
-          reason: reason || null
+      setVoteHistory(prev => {
+        // 如果是平票（reason包含"平票"），合併到同一天
+        if (reason && reason.includes("平票")) {
+          // 如果歷史為空，直接新增第一天
+          if (prev.length === 0) {
+            return [{
+              round: 1,
+              eliminated,
+              voteList: voteList.map(v => ({
+                from: playersById[v.from] || v.from,
+                to: v.to ? (playersById[v.to] || v.to) : "棄票"
+              })),
+              reason: reason || null
+            }];
+          } else {
+            // 合併到最後一天
+            const last = prev[prev.length - 1];
+            return [
+              ...prev.slice(0, -1),
+              {
+                ...last,
+                voteList: voteList.map(v => ({
+                  from: playersById[v.from] || v.from,
+                  to: v.to ? (playersById[v.to] || v.to) : "棄票"
+                })),
+                eliminated,
+                reason: reason || null
+              }
+            ];
+          }
+        } else {
+          // 非平票才遞增天數
+          return [
+            ...prev,
+            {
+              round: prev.length + 1,
+              eliminated,
+              voteList: voteList.map(v => ({
+                from: playersById[v.from] || v.from,
+                to: v.to ? (playersById[v.to] || v.to) : "棄票"
+              })),
+              reason: reason || null
+            }
+          ];
         }
-      ]);
+      });
     };
     socket.on("vote_result", handler);
     return () => socket.off("vote_result", handler);

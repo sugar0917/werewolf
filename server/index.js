@@ -538,7 +538,6 @@ io.on("connection", (socket) => {
     });
     io.to(roomId).emit("phase_changed", "night");
     broadcastPlayerStates(roomId);
-    io.to(roomId).emit("game_restarted");
 
     // 通知狼人隊友
     const wolves = players.filter(p => playerRoles[p.id].role === "狼人");
@@ -551,6 +550,9 @@ io.on("connection", (socket) => {
     hunterTarget[roomId] = null;
     hunterTriggered = {};
     deathByWitch = {};
+
+    // 最後才廣播game_restarted，確保所有狀態都已經重置
+    io.to(roomId).emit("game_restarted");
   });
 
   socket.on("hunter_shoot", ({ roomId, targetId }) => {
