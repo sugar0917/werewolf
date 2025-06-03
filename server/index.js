@@ -9,17 +9,21 @@ const cors = require("cors");
 const { Server } = require("socket.io");
 
 const app = express();
+// CORS for HTTP routes (REST API, if any)
 app.use(cors({
-  origin: "https://werewolf-client.onrender.com",
+  origin: "https://werewolf-client.onrender.com", // 改為你 Render 前端網址
   methods: ["GET", "POST"],
   credentials: true
 }));
 
 const server = http.createServer(app);
+
+// CORS for WebSocket (Socket.IO)
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"]
+    origin: "https://werewolf-client.onrender.com", // 這裡也要改
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
