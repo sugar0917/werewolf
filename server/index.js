@@ -720,6 +720,23 @@ io.on("connection", (socket) => {
       });
     }
   });
+
+  socket.on("werewolf_chat_message", ({ roomId, message }) => {
+    // 檢查發送者是否為活著的狼人
+    const player = playerRoles[socket.id];
+    if (!player || player.roomId !== roomId || player.role !== "狼人" || !player.alive) return;
+    // 找出同房間活著的狼人
+    const wolves = Object.entries(playerRoles)
+      .filter(([_, p]) => p.roomId === roomId && p.role === "狼人" && p.alive)
+      .map(([id]) => id);
+    // 廣播訊息給所有狼人
+    wolves.forEach(wolfId => {
+      io.to(wolfId).emit("werewolf_chat_message", {
+        from: player.username,
+        message
+      });
+    });
+  });
 });
 
 // 添加全域錯誤處理

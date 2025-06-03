@@ -347,6 +347,33 @@ const globalStyles = `
     justify-content: center;
     gap: 10px;
   }
+
+  .werewolf-chat-panel {
+    position: fixed;
+    bottom: 100px;
+    left: 20px;
+    width: 320px;
+    background: #222;
+    color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    padding: 12px;
+    z-index: 2000;
+  }
+
+  .werewolf-chat-panel h4 {
+    margin-bottom: 8px;
+  }
+
+  .chat-history {
+    max-height: 200px;
+    overflow-y: auto;
+    background: #222;
+    color: #fff;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
 `;
 
 // 添加樣式到 document
@@ -417,6 +444,10 @@ function App() {
   const [roomList, setRoomList] = useState([]);
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
+
+  // 狼人夜聊
+  const [werewolfChat, setWerewolfChat] = useState([]);
+  const [werewolfChatInput, setWerewolfChatInput] = useState("");
 
   // WebRTC 配置
   const rtcConfiguration = {
@@ -641,6 +672,9 @@ function App() {
     socket.on("get_room_list", () => {
       socket.emit("get_room_list");
     });
+    socket.on("werewolf_chat_message", ({ from, message }) => {
+      setWerewolfChat(prev => [...prev, { from, message }]);
+    });
     return () => {
       socket.off("phase_changed");
       socket.off("hunter_trigger");
@@ -648,9 +682,14 @@ function App() {
       socket.off("voice_chat");
       socket.off("rtc_signal");
       socket.off("room_list");
+      socket.off("werewolf_chat_message");
       socket.off();
     };
   }, [playersById]);
+
+  useEffect(() => {
+    if (gamePhase === "night") setWerewolfChat([]);
+  }, [gamePhase]);
 
   useEffect(() => {
     let interval = null;
@@ -1549,6 +1588,13 @@ function App() {
     </div>
   );
 
+  const sendWerewolfChat = () => {
+    if (werewolfChatInput.trim()) {
+      socket.emit("werewolf_chat_message", { roomId, message: werewolfChatInput });
+      setWerewolfChatInput("");
+    }
+  };
+
   return (
     <div className={`game-container ${gamePhase === "night" ? "night" : "day"}`}>
       <h2><i className="fas fa-gamepad" /> 狼人殺遊戲</h2>
@@ -1669,6 +1715,27 @@ function App() {
               {Object.entries(remoteStreams).map(([peerId, stream]) => (
                 <AudioPlayer key={peerId} stream={stream} isDeafened={isDeafened} />
               ))}
+
+              {gamePhase === "night" && isWerewolf && isAlive && (
+                <div className="werewolf-chat-panel">
+                  <h4>狼人夜聊</h4>
+                  <div className="chat-history" style={{ maxHeight: 200, overflowY: "auto", background: "#222", color: "#fff", padding: 10, borderRadius: 8, marginBottom: 8 }}>
+                    {werewolfChat.map((msg, idx) => (
+                      <div key={idx}><b>{msg.from}：</b>{msg.message}</div>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      value={werewolfChatInput}
+                      onChange={e => setWerewolfChatInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter") sendWerewolfChat(); }}
+                      placeholder="輸入訊息..."
+                      style={{ flex: 1, borderRadius: 4, border: "1px solid #444", padding: 6, background: "#333", color: "#fff" }}
+                    />
+                    <button className="action-button" onClick={sendWerewolfChat}>發送</button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </>
